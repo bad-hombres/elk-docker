@@ -23,14 +23,10 @@ ENV GOSU_VERSION 1.10
 ARG DEBIAN_FRONTEND=noninteractive
 RUN set -x \
  && apt-get update -qq \
- && apt-get install -qqy --no-install-recommends ca-certificates curl \
+ && apt-get install -qqy --no-install-recommends ca-certificates curl git wget python\
  && rm -rf /var/lib/apt/lists/* \
  && curl -L -o /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture)" \
  && curl -L -o /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture).asc" \
- && export GNUPGHOME="$(mktemp -d)" \
- && gpg --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4 \
- && gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu \
- && rm -r "$GNUPGHOME" /usr/local/bin/gosu.asc \
  && chmod +x /usr/local/bin/gosu \
  && gosu nobody true \
  && apt-get update -qq \
@@ -88,6 +84,7 @@ ADD ./logstash-init /etc/init.d/logstash
 RUN sed -i -e 's#^LS_HOME=$#LS_HOME='$LOGSTASH_HOME'#' /etc/init.d/logstash \
  && chmod +x /etc/init.d/logstash
 
+ENV DOG_HOME /opt/dog
 
 ### install Kibana
 
@@ -115,6 +112,15 @@ RUN sed -i -e 's#^KIBANA_HOME=$#KIBANA_HOME='$KIBANA_HOME'#' /etc/init.d/kibana 
 #                               CONFIGURATION
 ###############################################################################
 
+### install dog
+ARG SOMETHING=unknown
+RUN git clone https://github.com/bad-hombres/dog.git ${DOG_HOME}
+RUN mkdir -p ${DOG_HOME}/logs
+RUN sed "s@DOG_HOME@${DOG_HOME}@g" ${DOG_HOME}/dogstash.conf > ${LOGSTASH_PATH_CONF}/conf.d/01-dogstash.conf
+RUN apt-get install -qqy --no-install-recommends python-pip
+RUN pip install setuptools
+RUN pip install zmq
+
 ### configure Elasticsearch
 
 ADD ./elasticsearch.yml ${ES_PATH_CONF}/elasticsearch.yml
@@ -133,16 +139,6 @@ ADD ./logstash-beats.key /etc/pki/tls/private/logstash-beats.key
 
 # pipelines
 ADD pipelines.yml ${LOGSTASH_PATH_SETTINGS}/pipelines.yml
-
-# filters
-ADD ./02-beats-input.conf ${LOGSTASH_PATH_CONF}/conf.d/02-beats-input.conf
-ADD ./10-syslog.conf ${LOGSTASH_PATH_CONF}/conf.d/10-syslog.conf
-ADD ./11-nginx.conf ${LOGSTASH_PATH_CONF}/conf.d/11-nginx.conf
-ADD ./30-output.conf ${LOGSTASH_PATH_CONF}/conf.d/30-output.conf
-
-# patterns
-ADD ./nginx.pattern ${LOGSTASH_HOME}/patterns/nginx
-RUN chown -R logstash:logstash ${LOGSTASH_HOME}/patterns
 
 # Fix permissions
 RUN chmod -R +r ${LOGSTASH_PATH_CONF} ${LOGSTASH_PATH_SETTINGS} \
@@ -170,7 +166,7 @@ ADD ./kibana.yml ${KIBANA_HOME}/config/kibana.yml
 ADD ./start.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh
 
-EXPOSE 5601 9200 9300 5044
+EXPOSE 5601 9200 9300 5044 5555 5556
 VOLUME /var/lib/elasticsearch
 
 CMD [ "/usr/local/bin/start.sh" ]

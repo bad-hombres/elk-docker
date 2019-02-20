@@ -33,7 +33,7 @@ rm -f /var/run/elasticsearch/elasticsearch.pid /var/run/logstash.pid \
   /var/run/kibana5.pid
 
 ## initialise list of log files to stream in console (initially empty)
-OUTPUT_LOGFILES=""
+OUTPUT_LOGFILES="/opt/dog/logs/dog.log "
 
 
 ## override default time zone (Etc/UTC) if TZ variable is set
@@ -237,6 +237,7 @@ if [ -x /usr/local/bin/elk-post-hooks.sh ]; then
   . /usr/local/bin/elk-post-hooks.sh
 fi
 
+python /opt/dog/server.py > /opt/dog/logs/dog.log &
 
 touch $OUTPUT_LOGFILES
 tail -f $OUTPUT_LOGFILES &
