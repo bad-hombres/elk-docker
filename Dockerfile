@@ -162,11 +162,27 @@ ADD ./kibana.yml ${KIBANA_HOME}/config/kibana.yml
 ###############################################################################
 #                                   START
 ###############################################################################
-
 ADD ./start.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh
 
 EXPOSE 5601 9200 9300 5044 5555 5556
 VOLUME /var/lib/elasticsearch
+
+####################
+# Customize Kibana #
+####################
+RUN apt -y install zip
+
+# Copy and install the style plugin
+COPY kibana /kibana
+RUN zip -r /doggy_style.zip kibana
+RUN ${KIBANA_HOME}/bin/kibana-plugin install file:///doggy_style.zip
+
+# Include the plugin css file
+RUN sed -i 's/commons.style.css`,/commons.style.css`,`${regularBundlePath}\/doggy_style.style.css`,/g' ${KIBANA_HOME}/src/ui/ui_render/ui_render_mixin.js
+
+# Change the titles etc
+RUN sed -i 's/title Kibana/title Dog/g' ${KIBANA_HOME}/src/ui/ui_render/views/chrome.pug
+RUN sed -i 's/Loading Kibana/Loading Dog/g' ${KIBANA_HOME}/src/ui/ui_render/views/ui_app.pug
 
 CMD [ "/usr/local/bin/start.sh" ]
