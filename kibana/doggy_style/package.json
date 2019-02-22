@@ -1,0 +1,11 @@
+
+{
+  "name": "doggy_style",
+  "version": "0.1.0",
+  "main": "index.js",
+  "kibana": {
+    "version": "6.6.0"
+  },
+  "author": "Mike West <mwest67@gmail.com>",
+  "website": "https://bad-hombres.github.io/blog/"
+}
